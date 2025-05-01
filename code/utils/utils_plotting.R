@@ -46,82 +46,82 @@ plot_survival_curves <- function(predictions, individuals = NULL) {
         theme_minimal()
 }
 
-plot_csb <- function(csb, patient.list, nrow=2, oracle_pred=NULL,
-                             screening_time=NULL, screening_prob=NULL, screening_crit=NULL) {
-    df <- make_calibration_tidy(csb, external_preds=list("oracle"=oracle_pred))
+## plot_csb <- function(csb, patient.list, nrow=2, oracle_pred=NULL,
+##                      screening_time=NULL, screening_prob=NULL, screening_crit=NULL) {
+##     df <- make_calibration_tidy(csb, external_preds=list("oracle"=oracle_pred))
 
-    if(!is.null(screening_time) & !is.null(screening_prob) & !is.null(screening_crit)) {
-        stopifnot(screening_crit %in% c("low risk", "high risk"))
+##     if(!is.null(screening_time) & !is.null(screening_prob) & !is.null(screening_crit)) {
+##         stopifnot(screening_crit %in% c("low risk", "high risk"))
 
-        ## Selection with black-box model
-        time.points <- as.numeric(colnames(csb$model_pred))
-        selections.model <- select_patients_point(time.points, csb$model_pred, screening_time, screening_prob, screening_crit)$selected
+##         ## Selection with black-box model
+##         time.points <- as.numeric(colnames(csb$model_pred))
+##         selections.model <- select_patients_point(time.points, csb$model_pred, screening_time, screening_prob, screening_crit)$selected
 
-        ## Selections with conformal method
-        selections.calib <- select_patients_band(time.points, csb$lower, csb$upper, screening_time, screening_prob, screening_crit)$selected
+##         ## Selections with conformal method
+##         selections.calib <- select_patients_band(time.points, csb$lower, csb$upper, screening_time, screening_prob, screening_crit)$selected
 
-        if(!is.null(oracle_pred)) {
-            time.points.oracle <- as.numeric(colnames(oracle_pred))
-            selections.oracle <- select_patients_point(time.points.oracle, oracle_pred, screening_time, screening_prob, screening_crit)$selected
-        } else {
-            selections.oracle <- c()
-        }
-        axis_add <- c(0.25, 0.05)
-        title.str <- sprintf("Screening for: %s.\n", interpret_screening_rule(screening_time, screening_prob, screening_crit))
-    } else {
-        selections.model <- c()
-        selections.calib <- c()
-        selections.oracle <- c()
-        axis_add <- c(0,0)
-        title.str <- NULL
-    }
+##         if(!is.null(oracle_pred)) {
+##             time.points.oracle <- as.numeric(colnames(oracle_pred))
+##             selections.oracle <- select_patients_point(time.points.oracle, oracle_pred, screening_time, screening_prob, screening_crit)$selected
+##         } else {
+##             selections.oracle <- c()
+##         }
+##         axis_add <- c(0.25, 0.05)
+##         title.str <- sprintf("Screening for: %s.\n", interpret_screening_rule(screening_time, screening_prob, screening_crit))
+##     } else {
+##         selections.model <- c()
+##         selections.calib <- c()
+##         selections.oracle <- c()
+##         axis_add <- c(0,0)
+##         title.str <- NULL
+##     }
 
-    if(!is.null(screening_crit)) {
-        if(screening_crit=="low risk") {
-            selected.model.str <- sprintf("* (low risk, S > %.2f, black-box)", screening_prob)
-            selected.calib.str <- sprintf("* (low risk, S > %.2f, conformal)", screening_prob)
-        } else {
-            selected.model.str <- sprintf("* (high risk, S < %.2f, black-box)", screening_prob)
-            selected.calib.str <- sprintf("* (high risk, S < %.2f, conformal)", screening_prob)
-        }
-    }
+##     if(!is.null(screening_crit)) {
+##         if(screening_crit=="low risk") {
+##             selected.model.str <- sprintf("* (low risk, S > %.2f, black-box)", screening_prob)
+##             selected.calib.str <- sprintf("* (low risk, S > %.2f, conformal)", screening_prob)
+##         } else {
+##             selected.model.str <- sprintf("* (high risk, S < %.2f, black-box)", screening_prob)
+##             selected.calib.str <- sprintf("* (high risk, S < %.2f, conformal)", screening_prob)
+##         }
+##     }
 
-    min.time <- min(df$time)
-    max.time <- max(df$time)
+##     min.time <- min(df$time)
+##     max.time <- max(df$time)
 
-    pp <- df |>
-        filter(patient_id %in% patient.list, source %in% c("model", "oracle")) |>
-        mutate(Survival = factor(source, c("model", "oracle"), c("Model", "Oracle")),
-               Selected.model = ifelse(patient_id %in% selections.model, selected.model.str, ""),
-               Selected.calib = ifelse(patient_id %in% selections.calib, selected.calib.str, "")) |>
-        ggplot(aes(x = time, y = value, color = Survival, linetype = Survival, alpha = Survival)) +
-        geom_ribbon(data = df |> filter(patient_id %in% patient.list, source %in% c("lower", "upper")) |>
-                          pivot_wider(names_from = source, values_from = value),
-                    aes(x = time, ymin = lower, ymax = upper, fill = "Survival Band"),
-                    inherit.aes = FALSE, alpha = 0.5) +  # Shaded area between lower and upper curves
-        geom_line() +
-        geom_vline(xintercept=screening_time, linetype=3) +
-        geom_hline(yintercept=screening_prob, linetype=3) +
-        geom_text(x = 0.75*max.time, y = -0.05, aes(label = Selected.model), check_overlap = TRUE, color="darkorange", show.legend=FALSE) +
-        geom_text(x = 0.75*max.time, y = -0.15, aes(label = Selected.calib), check_overlap = TRUE, color="red2", show.legend=FALSE) +
-        facet_wrap(patient_id ~ ., nrow = nrow, labeller = label_both) +
-        ylab("Survival Probability") +
-        xlab("Time") +
-        scale_y_continuous(limits=c(0,1), breaks=c(0,0.25,0.5,0.75,1), expand = expansion(add = axis_add)) +
-        scale_color_manual(values = c("black", "darkgreen")) +
-        scale_linetype_manual(values = c(1, 2)) +
-        scale_alpha_manual(values = c(1, 1)) +
-        scale_fill_manual(values = c("gray"), name = "Calibration") +  # Color for shading
-        theme_bw() +
-        ggtitle(title.str) +
-        theme(
-            text = element_text(size = 16),
-            axis.title = element_text(size = 18),
-            axis.text = element_text(size = 14),
-            plot.title = element_text(size = 20, face = "bold")
-        )
-    pp
-}
+##     pp <- df |>
+##         filter(patient_id %in% patient.list, source %in% c("model", "oracle")) |>
+##         mutate(Survival = factor(source, c("model", "oracle"), c("Model", "Oracle")),
+##                Selected.model = ifelse(patient_id %in% selections.model, selected.model.str, ""),
+##                Selected.calib = ifelse(patient_id %in% selections.calib, selected.calib.str, "")) |>
+##         ggplot(aes(x = time, y = value, color = Survival, linetype = Survival, alpha = Survival)) +
+##         geom_ribbon(data = df |> filter(patient_id %in% patient.list, source %in% c("lower", "upper")) |>
+##                           pivot_wider(names_from = source, values_from = value),
+##                     aes(x = time, ymin = lower, ymax = upper, fill = "Survival Band"),
+##                     inherit.aes = FALSE, alpha = 0.5) +  # Shaded area between lower and upper curves
+##         geom_line() +
+##         geom_vline(xintercept=screening_time, linetype=3) +
+##         geom_hline(yintercept=screening_prob, linetype=3) +
+##         geom_text(x = 0.75*max.time, y = -0.05, aes(label = Selected.model), check_overlap = TRUE, color="darkorange", show.legend=FALSE) +
+##         geom_text(x = 0.75*max.time, y = -0.15, aes(label = Selected.calib), check_overlap = TRUE, color="red2", show.legend=FALSE) +
+##         facet_wrap(patient_id ~ ., nrow = nrow, labeller = label_both) +
+##         ylab("Survival Probability") +
+##         xlab("Time") +
+##         scale_y_continuous(limits=c(0,1), breaks=c(0,0.25,0.5,0.75,1), expand = expansion(add = axis_add)) +
+##         scale_color_manual(values = c("black", "darkgreen")) +
+##         scale_linetype_manual(values = c(1, 2)) +
+##         scale_alpha_manual(values = c(1, 1)) +
+##         scale_fill_manual(values = c("gray"), name = "Calibration") +  # Color for shading
+##         theme_bw() +
+##         ggtitle(title.str) +
+##         theme(
+##             text = element_text(size = 16),
+##             axis.title = element_text(size = 18),
+##             axis.text = element_text(size = 14),
+##             plot.title = element_text(size = 20, face = "bold")
+##         )
+##     pp
+## }
 
 
 plot_survival_panel <- function(pred_list,
@@ -432,36 +432,32 @@ plot_survival_two_panels <- function(csb_list, facet_labels, oracle_pred,
     return(final_plot)
 }
 
-make_calibration_tidy <- function(csb, external_preds = NULL) {
-    df_model <- as_tibble(csb$model_pred) %>%
-      mutate(source = "model", patient_id = row_number()) %>%
+make_calibration_tidy <- function(csb, external_preds = list()) {
+  # Convert model-based predictions to long format
+  df <- list(
+    as_tibble(csb$model_pred) |> 
+      mutate(source = "model", patient_id = row_number()) |> 
+      pivot_longer(-c(source, patient_id), names_to = "time", values_to = "value"),
+    as_tibble(csb$lower) |> 
+      mutate(source = "lower", patient_id = row_number()) |> 
+      pivot_longer(-c(source, patient_id), names_to = "time", values_to = "value"),
+    as_tibble(csb$upper) |> 
+      mutate(source = "upper", patient_id = row_number()) |> 
       pivot_longer(-c(source, patient_id), names_to = "time", values_to = "value")
+  )
 
-    df_lower <- as_tibble(csb$lower) %>%
-      mutate(source = "lower", patient_id = row_number()) %>%
-      pivot_longer(-c(source, patient_id), names_to = "time", values_to = "value")
-
-    df_upper <- as_tibble(csb$upper) %>%
-      mutate(source = "upper", patient_id = row_number()) %>%
-      pivot_longer(-c(source, patient_id), names_to = "time", values_to = "value")
-
-    # External prediction curves
-    df_external <- list()
-    if (!is.null(external_preds)) {
-        for (name in names(external_preds)) {
-            df_external[[name]] <- as_tibble(external_preds[[name]]) %>%
-              mutate(source = name, patient_id = row_number()) %>%
-              pivot_longer(-c(source, patient_id), names_to = "time", values_to = "value")
-        }
+  # External predictions like oracle
+  for (name in names(external_preds)) {
+    pred <- external_preds[[name]]
+    if (!is.null(pred) && is.matrix(pred) && ncol(pred) > 0) {
+      colnames(pred) <- as.character(colnames(pred))  # standardize column names
+      pred_df <- as_tibble(pred) |> 
+        mutate(source = name, patient_id = row_number()) |> 
+        pivot_longer(-c(source, patient_id), names_to = "time", values_to = "value")
+      df <- append(df, list(pred_df))
     }
+  }
 
-    combined_df <- bind_rows(
-        df_lower,
-        df_upper,
-        df_model,
-        bind_rows(df_external)  # include external preds here
-    ) %>%
-      mutate(time = as.numeric(time))
-
-    return(combined_df)
+  # Combine and coerce time to numeric
+  bind_rows(df) |> mutate(time = as.numeric(time))
 }
