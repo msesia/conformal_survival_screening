@@ -14,12 +14,6 @@ source("utils_data.R")
 ## Input parameters ##
 ######################
 
-# Available datasets:
-# VALCT: Lung cancer trial data (137 obs, 6 vars, from survival::veteran).
-# PBC: Liver disease data (137 obs, 6 vars, from survival::pbc, NAs imputed).
-# GBSG: Breast cancer data (2232 obs, 7 vars, combined train/test).
-# METABRIC: Breast cancer clinical data (1981 obs, 25 vars).
-
 ## Flag to determine if input should be parsed from command line
 parse_input <- TRUE
 
@@ -40,10 +34,10 @@ if(parse_input) {
     batch <- as.integer(args[5])
 
 } else {
-    dataset <- "GBSG"
+    dataset <- "PBC"
     surv_model_type <- "grf"
     cens_model_type <- "grf"
-    train_prop_sub = 1
+    train_prop_sub <- 1
     batch <- 1
 }
 
@@ -98,9 +92,9 @@ output_file <- paste0("results/data/", dataset,
 cat("Output file name:", output_file, "\n")
 
 
-############################
-# Define data distribution #
-############################
+##################
+# Load the data ##
+##################
 
 data <- load_csv(dataset)
 
@@ -117,50 +111,25 @@ colnames(data) <- col.names
 ## Use all features
 num_feat_censor <- num_features
 
-## Generate independent reference data set to find meaningful time grid for this survival distribution
+## Find meaningful time grid for this survival distribution
 if(is.null(time_points)) {
-    set.seed(1)
-    data.ref <- data
-    max_event_time <- max(data.ref$time)
-    time_points <- get_pretty_quantiles(c(0,data.ref$time), n=num_time_points)
+    max_event_time <- max(data$time)
+    time_points <- get_pretty_quantiles(c(0,data$time), n=num_time_points)
 }
-
 
 ###################################################
 ## Instantiate the survival and censoring models ##
 ###################################################
 
-init_surv_model <- function(model_type) {
-  surv_model <- switch(model_type,
-    "grf" = GRF_SurvivalForestWrapper$new(),
-    "survreg" = SurvregModelWrapper$new(dist = "lognormal"),
-    "rf" = randomForestSRC_SurvivalWrapper$new(),
-    "cox" = CoxphModelWrapper$new(),
-    stop("Unknown model type!")
-  ) 
-  return(surv_model)
-}
-
-init_censoring_model <- function(model_type, use_covariates = TRUE) {
-  cens_model <- switch(model_type,
-    "grf" = GRF_SurvivalForestWrapper$new(use_covariates = use_covariates),
-    "survreg" = SurvregModelWrapper$new(dist = "lognormal", use_covariates = use_covariates),
-    "rf" = randomForestSRC_SurvivalWrapper$new(use_covariates = use_covariates),
-    "cox" = CoxphModelWrapper$new(use_covariates = use_covariates),
-    stop("Unknown censoring model type!")
-  ) 
-  return(cens_model)
-}
-
 surv_model <- init_surv_model(surv_model_type)
 surv_model_large <- init_surv_model(surv_model_type)
 
-# List of covariates to use for censoring model
+## List of covariates to use for censoring model
 use.covariates <- paste("X", 1:min(num_features, num_feat_censor), sep="")
 
-# Instantiate censoring model based on the specified type
+## Instantiate censoring model based on the specified type
 cens_base_model <- init_censoring_model(cens_model_type, use_covariates=use.covariates)
-# Create an instance of the CensoringModel class with the model
+## Create an instance of the CensoringModel class with the model
 cens_model <- CensoringModel$new(model = cens_base_model)
 
 
@@ -188,7 +157,7 @@ analyze_data <- function(data.train, data.cal, data.test, surv_model, cens_model
       
     ## Apply CSB method
     csb <- conformal_survival_band(data.test, data.cal, surv_model, cens_model$model, time_points=time_points)
-   
+    
     ## Define parameter grid for screening analysis
     param_grid <- expand.grid(
         screening_time = time_points_screen_q,
@@ -316,32 +285,32 @@ run_experiment <- function(random.state) {
 ## Returns:
 ##   A tibble containing the combined results of all experiments
 run_multiple_experiments <- function(batch_size) {
-    results_df <- data.frame()  # Initialize an empty data frame to store cumulative results
+    results_df <- data.frame()  ## Initialize an empty data frame to store cumulative results
 
-    # Print a progress bar header
+    ## Print a progress bar header
     cat("Running experiments\n")
-    pb <- txtProgressBar(min = 0, max = batch_size, style = 3)  # Initialize progress bar
+    pb <- txtProgressBar(min = 0, max = batch_size, style = 3)  ## Initialize progress bar
 
-    # Loop over each repetition
+    ## Loop over each repetition
     for (i in 1:batch_size) {
         random.state <- batch*1000 + i
-        res <- run_experiment(random.state)  # Run experiment and get the result
+        res <- run_experiment(random.state)  ## Run experiment and get the result
 
         ## Combine the results with experiment metadata
         result_df <- tibble(Seed = random.state) |> cbind(header) |> cbind(res)
 
-        # Add the result to the cumulative data frame
+        ## Add the result to the cumulative data frame
         results_df <- rbind(results_df, result_df)
 
-        # Write the cumulative results to the CSV file
+        ## Write the cumulative results to the CSV file
         write.csv(results_df, output_file, row.names = FALSE)
 
-        setTxtProgressBar(pb, i)  # Update progress bar
+        setTxtProgressBar(pb, i)  ## Update progress bar
     }
 
-    close(pb)  # Close the progress bar
+    close(pb)  ## Close the progress bar
 
-    return(results_df)  # Return the cumulative results data frame
+    return(results_df)  ## Return the cumulative results data frame
 }
 
 #####################
