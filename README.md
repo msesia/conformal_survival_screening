@@ -8,7 +8,7 @@ This repository contains code for reproducing the experiments and examples prese
 
 > **Conformal Survival Bands for Risk Screening under Right-Censoring**  
 > Matteo Sesia and Vladimir Svetnik (2025)  
-> 📎 _Link to the arXiv preprint will be provided here when available._
+> [https://arxiv.org/abs/2505.04568](https://arxiv.org/abs/2505.04568)
 
 ---
 
