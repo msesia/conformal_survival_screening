@@ -180,8 +180,9 @@ analyze_data <- function(data.train, data.cal, data.test, surv_model, cens_model
     }
     cens_model$fit(data = data.train[idx.train.cens,])
       
-    ## Apply CSB method
-    csb <- conformal_survival_band(data.test, data.cal, surv_model, cens_model$model, time_points=time_points)
+    ## Apply CSB method (with and without estimating null proportion)
+    csb <- conformal_survival_band(data.test, data.cal, surv_model, cens_model$model, time_points=time_points, estimate_pi0=FALSE)
+    csb.pi0 <- conformal_survival_band(data.test, data.cal, surv_model, cens_model$model, time_points=time_points, estimate_pi0=TRUE)
 
     ## Define parameter grid for screening analysis
     param_grid <- expand.grid(
@@ -201,6 +202,8 @@ analyze_data <- function(data.train, data.cal, data.test, surv_model, cens_model
         ## Selections with CSB
         sel_csb <- select_patients_band(time.points, csb$lower, csb$upper,
                                          screening_time, screening_prob, screening_crit)$selected
+        sel_csb_plus <- select_patients_band(time.points, csb.pi0$lower, csb.pi0$upper,
+                                             screening_time, screening_prob, screening_crit)$selected
 
         ## Selections with oracle
         time.points.oracle <- as.numeric(colnames(oracle_pred))
@@ -217,6 +220,7 @@ analyze_data <- function(data.train, data.cal, data.test, surv_model, cens_model
         selections <- list("model" = sel_model,
                            "KM" = sel_km,
                            "CSB" = sel_csb,
+                           "CSB+" = sel_csb_plus,
                            "oracle" = sel_oracle)
         ## Evaluate and format results
         evaluated <- map2_dfr(selections, names(selections), function(selected, method_name) {

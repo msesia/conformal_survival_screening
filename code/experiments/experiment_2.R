@@ -156,7 +156,8 @@ analyze_data <- function(data.train, data.cal, data.test, surv_model, cens_model
     cens_model$fit(data = data.train[idx.train.cens,])
       
     ## Apply CSB method
-    csb <- conformal_survival_band(data.test, data.cal, surv_model, cens_model$model, time_points=time_points)
+    csb <- conformal_survival_band(data.test, data.cal, surv_model, cens_model$model, time_points=time_points, estimate_pi0=FALSE)
+    csb.pi0 <- conformal_survival_band(data.test, data.cal, surv_model, cens_model$model, time_points=time_points, estimate_pi0=TRUE)
     
     ## Define parameter grid for screening analysis
     param_grid <- expand.grid(
@@ -177,6 +178,8 @@ analyze_data <- function(data.train, data.cal, data.test, surv_model, cens_model
         ## Selections with CSB
         sel_csb <- select_patients_band(time.points, csb$lower, csb$upper,
                                          screening_time, screening_prob, screening_crit)$selected
+        sel_csb_plus <- select_patients_band(time.points, csb.pi0$lower, csb.pi0$upper,
+                                             screening_time, screening_prob, screening_crit)$selected
 
         ## Selections with KM
         km_vec <- summary(km_fit, times = time.points, extend = TRUE)$surv
@@ -188,7 +191,8 @@ analyze_data <- function(data.train, data.cal, data.test, surv_model, cens_model
         ## Combine all selections
         selections <- list("model" = sel_model,
                            "KM" = sel_km,
-                           "CSB" = sel_csb
+                           "CSB" = sel_csb,
+                           "CSB+" = sel_csb_plus
                            )
         if(save_plots) {
             patient.list <- c(1:4)
@@ -198,9 +202,9 @@ analyze_data <- function(data.train, data.cal, data.test, surv_model, cens_model
                     Model = model_pred[patient.list, ],
                     KM = km_matrix[patient.list, ]
                 ),
-                band_list = list(`CSB` = list(
-                                     lower = csb$lower[patient.list, ],
-                                     upper = csb$upper[patient.list, ]
+                band_list = list(`CSB+` = list(
+                                     lower = csb_plus$lower[patient.list, ],
+                                     upper = csb_plus$upper[patient.list, ]
                                  )),
                 screening_time = screening_time,
                 screening_prob = screening_prob,
