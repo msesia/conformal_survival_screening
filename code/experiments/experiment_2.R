@@ -156,8 +156,8 @@ analyze_data <- function(data.train, data.cal, data.test, surv_model, cens_model
     cens_model$fit(data = data.train[idx.train.cens,])
       
     ## Apply CSB method
-    csb <- conformal_survival_band(data.test, data.cal, surv_model, cens_model$model, time_points=time_points, estimate_pi0=FALSE)
-    csb.pi0 <- conformal_survival_band(data.test, data.cal, surv_model, cens_model$model, time_points=time_points, estimate_pi0=TRUE)
+    csb <- conformal_survival_band(data.test, data.cal, surv_model, cens_model$model, time_points=time_points, boost_scores=FALSE)
+    csb.plus <- conformal_survival_band(data.test, data.cal, surv_model, cens_model$model, time_points=time_points, boost_scores=TRUE)
     
     ## Define parameter grid for screening analysis
     param_grid <- expand.grid(
@@ -178,7 +178,7 @@ analyze_data <- function(data.train, data.cal, data.test, surv_model, cens_model
         ## Selections with CSB
         sel_csb <- select_patients_band(time.points, csb$lower, csb$upper,
                                          screening_time, screening_prob, screening_crit)$selected
-        sel_csb_plus <- select_patients_band(time.points, csb.pi0$lower, csb.pi0$upper,
+        sel_csb_plus <- select_patients_band(time.points, csb.plus0$lower, csb.plus$upper,
                                              screening_time, screening_prob, screening_crit)$selected
 
         ## Selections with KM

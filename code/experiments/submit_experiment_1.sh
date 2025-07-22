@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Parameters
-SETUP=0
+SETUP=3
 
 if [[ $SETUP == 1 ]]; then
   # Data distribution setting
