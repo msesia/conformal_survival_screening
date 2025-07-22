@@ -178,7 +178,7 @@ analyze_data <- function(data.train, data.cal, data.test, surv_model, cens_model
         ## Selections with CSB
         sel_csb <- select_patients_band(time.points, csb$lower, csb$upper,
                                          screening_time, screening_prob, screening_crit)$selected
-        sel_csb_plus <- select_patients_band(time.points, csb.plus0$lower, csb.plus$upper,
+        sel_csb_plus <- select_patients_band(time.points, csb.plus$lower, csb.plus$upper,
                                              screening_time, screening_prob, screening_crit)$selected
 
         ## Selections with KM
