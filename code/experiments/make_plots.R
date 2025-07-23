@@ -27,8 +27,11 @@ save_fig <- TRUE
 variable.values <- c("Screened", "Survival", "Precision", "Recall")
 variable.labels <- c("Screened Proportion", "Survival Rate", "Precision", "Recall")
 
-method.values <- c("model", "KM", "CSB", "oracle")
+method.values <- c("model", "KM", "CSB+", "oracle")
 method.labels <- c("Model", "KM", "CSB", "Oracle")
+
+#method.values <- c("model", "KM", "CSB+", "oracle")
+#method.labels <- c("Model", "KM", "CSB+", "Oracle")
 
 
 load_results <- function(setup) {

@@ -5,7 +5,8 @@ get_custom_colors_model <- function() {
         "Model" = "black",
         "Oracle" = "forestgreen",
         "KM" = "blue",
-        "CSB" = "red"
+        "CSB" = "red",
+        "CSB+" = "purple"
     )
 }
 get_custom_shapes_model <- function() {
@@ -13,7 +14,8 @@ get_custom_shapes_model <- function() {
         "Model" = 16,
         "Oracle" = 8,
         "KM" = 18,
-        "CSB" = 17
+        "CSB" = 17,
+        "CSB+" = 17
     )
 }
 
